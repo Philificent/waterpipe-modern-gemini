@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waterpipe.js Modernized</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* Control Panel Styles */
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            color: #eee;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+            z-index: 100;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        #controls.collapsed {
+            transform: translateX(120%);
+        }
+
+        #toggle-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 101;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+
+        #toggle-controls:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #aaa;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #00d2ff;
+        }
+
+        .control-group input[type="color"] {
+            width: 100%;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        .control-group span {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        h2 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        button.download-btn {
+            background: #00d2ff;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        button.download-btn:hover {
+            background: #33ddff;
+        }
+    </style>
+</head>
+<body>
+
+    <button id="toggle-controls">Settings</button>
+
+    <div id="controls">
+        <h2>
+            Settings
+            <span style="font-size: 10px; opacity: 0.5; font-weight: normal;">Waterpipe Modern</span>
+        </h2>
+
+        <div class="control-group">
+            <label>Start Color</label>
+            <input type="color" id="gradientStart" value="#000000">
+        </div>
+
+        <div class="control-group">
+            <label>End Color</label>
+            <input type="color" id="gradientEnd" value="#222222">
+        </div>
+
+        <div class="control-group">
+            <label>Smoke Opacity <span id="val-smokeOpacity">0.1</span></label>
+            <input type="range" id="smokeOpacity" min="0.01" max="1" step="0.01" value="0.1">
+        </div>
+
+        <div class="control-group">
+            <label>Num Circles <span id="val-numCircles">1</span></label>
+            <input type="range" id="numCircles" min="1" max="10" step="1" value="1">
+        </div>
+
+        <div class="control-group">
+            <label>Max Radius <span id="val-maxMaxRad">200</span></label>
+            <input type="range" id="maxMaxRad" min="50" max="1000" step="10" value="200">
+        </div>
+
+        <div class="control-group">
+            <label>Min Radius <span id="val-minMaxRad">50</span></label>
+            <input type="range" id="minMaxRad" min="10" max="500" step="10" value="50">
+        </div>
+
+        <div class="control-group">
+            <label>Detail (Iterations) <span id="val-iterations">8</span></label>
+            <input type="range" id="iterations" min="4" max="10" step="1" value="8">
+        </div>
+
+        <div class="control-group">
+            <label>Draws Per Frame <span id="val-drawsPerFrame">10</span></label>
+            <input type="range" id="drawsPerFrame" min="1" max="50" step="1" value="10">
+        </div>
+
+        <div class="control-group">
+            <label>Line Width <span id="val-lineWidth">2</span></label>
+            <input type="range" id="lineWidth" min="0.5" max="10" step="0.5" value="2">
+        </div>
+
+        <div class="control-group">
+            <label>Speed <span id="val-speed">1</span></label>
+            <input type="range" id="speed" min="0" max="10" step="0.5" value="1">
+        </div>
+
+        <div class="control-group">
+            <label>Bg Inner</label>
+            <input type="color" id="bgColorInner" value="#444444">
+        </div>
+
+        <div class="control-group">
+            <label>Bg Outer</label>
+            <input type="color" id="bgColorOuter" value="#111111">
+        </div>
+
+        <button class="download-btn" id="downloadBtn">Download Image</button>
+    </div>
+
+    <canvas id="waterpipe"></canvas>
+
+    <script>
+        /**
+         * WaterpipeModern
+         * A modernized, dependency-free version of the waterpipe.js jQuery plugin.
+         * Generates smoky backgrounds using 1D fractal noise (midpoint displacement).
+         */
+        class Waterpipe {
+            constructor(canvas, options = {}) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+
+                // Default Options
+                this.options = {
+                    gradientStart: '#000000',
+                    gradientEnd: '#222222',
+                    smokeOpacity: 0.1,
+                    numCircles: 1,
+                    maxMaxRad: 'auto',
+                    minMaxRad: 'auto',
+                    minRadFactor: 0,
+                    iterations: 8,
+                    drawsPerFrame: 10,
+                    lineWidth: 2,
+                    speed: 1,
+                    bgColorInner: "#444444",
+                    bgColorOuter: "#111111",
+                    ...options
+                };
+
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.timer = 0;
+
+                // Bind methods
+                this.resize = this.resize.bind(this);
+                this.animate = this.animate.bind(this);
+
+                // Initialize
+                window.addEventListener('resize', this.resize);
+                this.resize();
+                this.generateGradient();
+
+                // Start Loop
+                requestAnimationFrame(this.animate);
+            }
+
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+
+                // Recalculate radius constraints if set to auto
+                if (this.options.maxMaxRad === 'auto') this.options.maxMaxRad = this.width / 2;
+                if (this.options.minMaxRad === 'auto') this.options.minMaxRad = this.width / 2;
+
+                // Clear and regenerate background gradient
+                this.generateGradient();
+            }
+
+            updateOption(key, value) {
+                this.options[key] = value;
+                if (key.startsWith('bgColor')) {
+                    this.generateGradient();
+                }
+            }
+
+            generateGradient() {
+                // Pre-generate the background gradient to save performance
+                // Note: In the original, it cleared every frame.
+                // We will handle clearing in the render loop.
+            }
+
+            /**
+             * The core Midpoint Displacement Algorithm for 1D arrays
+             * Generates a "wobbly circle" defined by radial offsets.
+             */
+            generateFractal(x, y, radius, iterations) {
+                const points = [];
+                // Initialize main points (start and end of the circle loop)
+                // Actually, for a circle, we map [0, 2PI]
+                // We'll generate a 1D heightmap (radius map) and wrap it.
+
+                // Basic implementation: Start with a base radius map
+                let radMap = [radius, radius]; // Start, End (same value for loop)
+
+                const roughness = 0.5; // Controls how jagged the smoke is
+
+                // Subdivide
+                for (let i = 0; i < iterations; i++) {
+                    const newMap = [];
+                    for (let j = 0; j < radMap.length - 1; j++) {
+                        const avg = (radMap[j] + radMap[j+1]) / 2;
+                        // Displacement decreases with iteration depth
+                        const displacement = (Math.random() - 0.5) * radius * Math.pow(roughness, i);
+                        newMap.push(radMap[j]);
+                        newMap.push(avg + displacement);
+                    }
+                    newMap.push(radMap[radMap.length - 1]);
+                    radMap = newMap;
+                }
+
+                // Convert Radius Map to X,Y Coordinates
+                const angleStep = (Math.PI * 2) / (radMap.length - 1);
+
+                this.ctx.beginPath();
+                for (let i = 0; i < radMap.length; i++) {
+                    const angle = i * angleStep;
+                    // Apply a global timer offset for "waving"
+                    const r = Math.max(0, radMap[i]); // Ensure non-negative radius
+
+                    const px = x + Math.cos(angle) * r;
+                    const py = y + Math.sin(angle) * r;
+
+                    if (i === 0) {
+                        this.ctx.moveTo(px, py);
+                    } else {
+                        this.ctx.lineTo(px, py);
+                    }
+                }
+                this.ctx.closePath();
+            }
+
+            animate() {
+                // 1. Draw Background
+                // We draw a radial gradient that covers the whole screen
+                const bgGrad = this.ctx.createRadialGradient(
+                    this.width / 2, this.height / 2, 0,
+                    this.width / 2, this.height / 2, Math.max(this.width, this.height)
+                );
+                bgGrad.addColorStop(0, this.options.bgColorInner);
+                bgGrad.addColorStop(1, this.options.bgColorOuter);
+
+                // Use a low opacity fill to create trails if desired,
+                // but standard smoky effect usually redraws clean for sharpness or accumulates slowly.
+                // The original plugin redraws everything per tick, but draws *many* lines to create density.
+                this.ctx.fillStyle = bgGrad;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+
+                // 2. Setup Stroke Style
+                this.ctx.lineWidth = this.options.lineWidth;
+                this.ctx.strokeStyle = this.options.gradientStart; // Simple color for now
+                // Create a gradient for the stroke itself if needed, but per-line alpha is better.
+
+                // To simulate the gradientStart -> gradientEnd over the "depth" of smoke,
+                // we could vary color per circle. For now, let's stick to a solid color with opacity.
+                const r1 = parseInt(this.options.gradientStart.slice(1, 3), 16);
+                const g1 = parseInt(this.options.gradientStart.slice(3, 5), 16);
+                const b1 = parseInt(this.options.gradientStart.slice(5, 7), 16);
+
+                this.ctx.strokeStyle = `rgba(${r1}, ${g1}, ${b1}, ${this.options.smokeOpacity})`;
+
+                // 3. Draw Smoke
+                // We draw multiple "frames" of the fractal per animation frame to build density
+                for (let c = 0; c < this.options.numCircles; c++) {
+                    for (let d = 0; d < this.options.drawsPerFrame; d++) {
+                        // Randomize center slightly or keep centered?
+                        // Original kept them mostly centered but with huge radial noise.
+                        const centerX = this.width / 2;
+                        const centerY = this.height / 2;
+
+                        // Calculate a base radius for this iteration
+                        const timeOffset = Date.now() * 0.0001 * this.options.speed;
+                        const noiseBase = Math.sin(timeOffset + d) * 50;
+
+                        // Parse Radius Inputs (handle 'auto' logic simply)
+                        let maxR = typeof this.options.maxMaxRad === 'number' ? this.options.maxMaxRad : this.width/2;
+                        let minR = typeof this.options.minMaxRad === 'number' ? this.options.minMaxRad : this.width/4;
+
+                        // Random radius between min and max
+                        const radius = minR + Math.random() * (maxR - minR);
+
+                        this.generateFractal(centerX, centerY, radius, this.options.iterations);
+                        this.ctx.stroke();
+                    }
+                }
+
+                this.timer += this.options.speed;
+                requestAnimationFrame(this.animate);
+            }
+
+            download() {
+                const link = document.createElement('a');
+                link.download = 'waterpipe-smoke.png';
+                link.href = this.canvas.toDataURL();
+                link.click();
+            }
+        }
+
+        // --- Main Execution ---
+
+        const canvas = document.getElementById('waterpipe');
+        const waterpipe = new Waterpipe(canvas);
+
+        // --- UI Logic ---
+        const controls = document.getElementById('controls');
+        const toggleBtn = document.getElementById('toggle-controls');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // Toggle Panel
+        toggleBtn.addEventListener('click', () => {
+            if (controls.classList.contains('collapsed')) {
+                controls.classList.remove('collapsed');
+                toggleBtn.textContent = 'Hide Settings';
+            } else {
+                controls.classList.add('collapsed');
+                toggleBtn.textContent = 'Settings';
+            }
+        });
+
+        // Download
+        downloadBtn.addEventListener('click', () => waterpipe.download());
+
+        // Helper to bind input to option
+        function bindInput(id, type = 'number') {
+            const el = document.getElementById(id);
+            const display = document.getElementById(`val-${id}`);
+
+            el.addEventListener('input', (e) => {
+                let val = e.target.value;
+                if (type === 'number') val = parseFloat(val);
+
+                waterpipe.updateOption(id, val);
+                if (display) display.textContent = val;
+            });
+        }
+
+        // Bind all inputs
+        bindInput('smokeOpacity');
+        bindInput('numCircles');
+        bindInput('maxMaxRad');
+        bindInput('minMaxRad');
+        bindInput('iterations');
+        bindInput('drawsPerFrame');
+        bindInput('lineWidth');
+        bindInput('speed');
+        bindInput('gradientStart', 'color');
+        bindInput('gradientEnd', 'color');
+        bindInput('bgColorInner', 'color');
+        bindInput('bgColorOuter', 'color');
+
+    </script>
+</body>
+</html>
