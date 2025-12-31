@@ -236,7 +236,7 @@
 
                 // Initialize
                 window.addEventListener('resize', this.resize);
-                this.resize();
+                this.resize(); // This calls generateGradient()
 
                 // Start Loop
                 requestAnimationFrame(this.animate);
