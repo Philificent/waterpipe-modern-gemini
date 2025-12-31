@@ -15,8 +15,20 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
         canvas {
             display: block;
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
         /* Control Panel Styles */
@@ -89,6 +101,19 @@
             background: transparent;
         }
 
+        .control-group select {
+            width: 100%;
+            padding: 5px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            border-radius: 4px;
+        }
+
+        .control-group option {
+            background: #222;
+        }
+
         .control-group span {
             color: #fff;
             font-weight: bold;
@@ -104,20 +129,34 @@
             align-items: center;
         }
 
-        button.download-btn {
-            background: #00d2ff;
-            color: #000;
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        button.action-btn {
+            background: #444;
+            color: #fff;
             border: none;
             padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
             width: 100%;
             font-weight: bold;
-            margin-top: 10px;
             transition: background 0.2s;
         }
 
-        button.download-btn:hover {
+        button.action-btn:hover {
+            background: #555;
+        }
+
+        button.action-btn.primary {
+            background: #00d2ff;
+            color: #000;
+        }
+
+        button.action-btn.primary:hover {
             background: #33ddff;
         }
     </style>
@@ -131,6 +170,17 @@
             Settings
             <span style="font-size: 10px; opacity: 0.5; font-weight: normal;">Waterpipe Modern</span>
         </h2>
+
+        <div class="control-group">
+            <label>Resolution</label>
+            <select id="resolution">
+                <option value="window">Window Size (Default)</option>
+                <option value="1080x1920">Mobile (1080x1920)</option>
+                <option value="1280x720">HD (720p)</option>
+                <option value="1920x1080">Full HD (1080p)</option>
+                <option value="3840x2160">4K (2160p)</option>
+            </select>
+        </div>
 
         <div class="control-group">
             <label>Start Color</label>
@@ -192,10 +242,15 @@
             <input type="color" id="bgColorOuter" value="#111111">
         </div>
 
-        <button class="download-btn" id="downloadBtn">Download Image</button>
+        <div class="btn-group">
+            <button class="action-btn" id="clearBtn">Clear Canvas</button>
+            <button class="action-btn primary" id="downloadBtn">Download</button>
+        </div>
     </div>
 
-    <canvas id="waterpipe"></canvas>
+    <div id="canvas-container">
+        <canvas id="waterpipe"></canvas>
+    </div>
 
     <script>
         /**
@@ -223,6 +278,7 @@
                     speed: 1,
                     bgColorInner: "#444444",
                     bgColorOuter: "#111111",
+                    resolution: 'window',
                     ...options
                 };
 
@@ -230,16 +286,45 @@
                 this.height = window.innerHeight;
                 this.timer = 0;
 
+                // Mouse/Touch tracking
+                this.mx = this.width / 2;
+                this.my = this.height / 2;
+
                 // Bind methods
                 this.resize = this.resize.bind(this);
                 this.animate = this.animate.bind(this);
+                this.handleInput = this.handleInput.bind(this);
 
                 // Initialize
                 window.addEventListener('resize', this.resize);
-                this.resize(); // This calls generateGradient()
+                window.addEventListener('mousemove', this.handleInput);
+                window.addEventListener('touchmove', this.handleInput, {passive: false});
+
+                this.resize(); // This calls generateGradient() and wipe()
 
                 // Start Loop
                 requestAnimationFrame(this.animate);
+            }
+
+            handleInput(e) {
+                // Prevent default scrolling on touch
+                if (e.type === 'touchmove') e.preventDefault();
+
+                const rect = this.canvas.getBoundingClientRect();
+                const scaleX = this.canvas.width / rect.width;
+                const scaleY = this.canvas.height / rect.height;
+
+                let clientX, clientY;
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+
+                this.mx = (clientX - rect.left) * scaleX;
+                this.my = (clientY - rect.top) * scaleY;
             }
 
             hexToRgb(hex) {
@@ -250,10 +335,22 @@
             }
 
             resize() {
-                this.width = window.innerWidth;
-                this.height = window.innerHeight;
+                if (this.options.resolution === 'window') {
+                    this.width = window.innerWidth;
+                    this.height = window.innerHeight;
+                } else {
+                    const [w, h] = this.options.resolution.split('x').map(Number);
+                    this.width = w;
+                    this.height = h;
+                }
+
                 this.canvas.width = this.width;
                 this.canvas.height = this.height;
+
+                // Reset center if it hasn't been moved yet (or just keep last relative position?)
+                // For now, let's reset to center to ensure it's on screen
+                this.mx = this.width / 2;
+                this.my = this.height / 2;
 
                 // Recalculate radius constraints if set to auto
                 if (this.options.maxMaxRad === 'auto') this.options.maxMaxRad = this.width / 2;
@@ -261,12 +358,17 @@
 
                 // Clear and regenerate background gradient
                 this.generateGradient();
+                this.wipe();
             }
 
             updateOption(key, value) {
                 this.options[key] = value;
                 if (key.startsWith('bgColor')) {
                     this.generateGradient();
+                    this.wipe();
+                }
+                if (key === 'resolution') {
+                    this.resize();
                 }
             }
 
@@ -278,6 +380,13 @@
                 );
                 this.bgGradient.addColorStop(0, this.options.bgColorInner);
                 this.bgGradient.addColorStop(1, this.options.bgColorOuter);
+            }
+
+            wipe() {
+                if (this.bgGradient) {
+                    this.ctx.fillStyle = this.bgGradient;
+                    this.ctx.fillRect(0, 0, this.width, this.height);
+                }
             }
 
             /**
@@ -330,12 +439,8 @@
             }
 
             animate() {
-                // 1. Draw Background
-                // Use cached gradient
-                if (this.bgGradient) {
-                    this.ctx.fillStyle = this.bgGradient;
-                    this.ctx.fillRect(0, 0, this.width, this.height);
-                }
+                // FIXED: Do not clear background every frame.
+                // Only draw smoke. The background is drawn in this.wipe() which is called on resize/init/clear.
 
                 // 2. Setup Stroke Style
                 this.ctx.lineWidth = this.options.lineWidth;
@@ -356,14 +461,13 @@
 
                         this.ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${this.options.smokeOpacity})`;
 
-                        // Randomize center slightly or keep centered?
-                        // Original kept them mostly centered but with huge radial noise.
-                        const centerX = this.width / 2;
-                        const centerY = this.height / 2;
+                        // Use current mouse/touch position
+                        const centerX = this.mx;
+                        const centerY = this.my;
 
                         // Calculate a base radius for this iteration
                         const timeOffset = Date.now() * 0.0001 * this.options.speed;
-                        const noiseBase = Math.sin(timeOffset + d) * 50;
+                        // const noiseBase = Math.sin(timeOffset + d) * 50; // Unused in original, maybe for position?
 
                         // Parse Radius Inputs (handle 'auto' logic simply)
                         let maxR = typeof this.options.maxMaxRad === 'number' ? this.options.maxMaxRad : this.width/2;
@@ -398,6 +502,8 @@
         const controls = document.getElementById('controls');
         const toggleBtn = document.getElementById('toggle-controls');
         const downloadBtn = document.getElementById('downloadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const resolutionSelect = document.getElementById('resolution');
 
         // Toggle Panel
         toggleBtn.addEventListener('click', () => {
@@ -410,8 +516,13 @@
             }
         });
 
-        // Download
+        // Actions
         downloadBtn.addEventListener('click', () => waterpipe.download());
+        clearBtn.addEventListener('click', () => waterpipe.wipe());
+
+        resolutionSelect.addEventListener('change', (e) => {
+            waterpipe.updateOption('resolution', e.target.value);
+        });
 
         // Helper to bind input to option
         function bindInput(id, type = 'number') {
